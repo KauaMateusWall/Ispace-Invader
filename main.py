@@ -1,89 +1,78 @@
 import sys, pygame
 from random import randint
-from pygame.time import get_ticks  # Importando corretamente o método get_ticks
+from pygame.time import get_ticks
 
 pygame.init()
 
-player_delay = [100, 0]
-speed = 15
-enemy_speed = 10
-shot_interval = 500
-
+# Definição de constantes
+PLAYER_DELAY = 100
+SPEED = 15
+ENEMY_SPEED = 10
+SHOT_INTERVAL = 500
+BALA_WIDTH = 10
+BALA_HEIGHT = 10
+PLAYER_WIDTH = 110
+PLAYER_HEIGHT = 110
+INIMIGO_WIDTH = 80
+INIMIGO_HEIGHT = 80
 
 class Bala:
-    rect: pygame.Rect
-    speed: [int, int]
-    damage: [int]
-
     def __init__(self, rect, speed, damage):
         self.rect = rect
         self.speed = speed
         self.damage = damage
 
-
 class Inimigo:
     def __init__(self, rect, speed):
         self.rect = rect
         self.speed = speed
-        self.direction = 1  # Direção inicial (1 = direita, -1 = esquerda)
-        self.last_shot = get_ticks()  # Registrar o tempo do último tiro
+        self.direction = 1
+        self.last_shot = get_ticks()
 
     def move(self):
-        # Movimentar o inimigo de um lado para o outro
         self.rect.x += self.speed * self.direction
         if self.rect.left <= 0 or self.rect.right >= width:
-            self.direction *= -1  # Inverter a direção ao atingir a borda da tela
+            self.direction *= -1
 
     def shoot(self):
-        # Verificar o tempo e disparar se o intervalo tiver passado
         current_time = get_ticks()
-        if current_time - self.last_shot > shot_interval:
+        if current_time - self.last_shot > SHOT_INTERVAL:
             self.last_shot = current_time
-            # Criar uma bala saindo do centro inferior do inimigo
-            return Bala(pygame.Rect(self.rect.centerx, self.rect.bottom, 10, 10), [0, 10], 10)
+            return Bala(pygame.Rect(self.rect.centerx, self.rect.bottom, BALA_WIDTH, BALA_HEIGHT), [0, 10], 10)
         return None
 
-
-# Definir a tela em modo fullscreen
+# Inicializar a tela
 screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-
-# Obter a largura e altura da tela
 width, height = screen.get_size()
-
-# Definir a posição inicial do player na parte inferior da tela
-rect = pygame.rect.Rect(width - 1000, height - 150, 110, 110)
-
-# Definir a altura máxima que o player pode se mover (40% da tela)
 limite_altura = height * 0.8
 
-clock = pygame.time.Clock()
+# Configurar player
+rect = pygame.Rect(width - 1000, height - 150, PLAYER_WIDTH, PLAYER_HEIGHT)
+player_delay = [PLAYER_DELAY, 0]
 
-# Carregar a música de fundo
-pygame.mixer.music.load(r'C:\Users\05341106067\Downloads\musicaFundo.mp3')
-
-# Reproduzir a música indefinidamente (-1 faz com que a música toque em loop)
+# Carregar imagens e sons
+pygame.mixer.music.load('sons/musicafundo.mp3')
 pygame.mixer.music.play(-1)
 
-# Carregar e redimensionar a imagem de fundo
-fundo = pygame.image.load(r'C:\Users\05341106067\Downloads\FUNDO2.jpg')
+fundo = pygame.image.load("Imagens/fundo.jpg")
 fundo = pygame.transform.scale(fundo, (width, height))
+player = pygame.image.load("Imagens/player.png")
+inimigo_img = pygame.image.load("Imagens/inimigo.png")
+bala_img = pygame.image.load("Imagens/bala.png")
 
-player = pygame.image.load(r"C:\Users\05341106067\Downloads\player2.png")
-
-inimigo_img = pygame.image.load(r"C:\Users\05341106067\Downloads\inimigo.png")
-
-bala_img = pygame.image.load(r"C:\Users\05341106067\Downloads\bala2.png")
-
-# Lista para armazenar balas disparadas
+# Listas para armazenar balas e inimigos
 Balas = []
-
 Inimigos = []
 Balas_inimigos = []
 
+# Criar inimigos
 for i in range(10):
-    inimigo = Inimigo(pygame.Rect(randint(0, width - 100), randint(50, 200), 80, 80), enemy_speed)
+    inimigo = Inimigo(pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT), ENEMY_SPEED)
     Inimigos.append(inimigo)
 
+clock = pygame.time.Clock()
+
+# Loop principal do jogo
 while True:
     screen.fill((0, 0, 0))
     for event in pygame.event.get():
@@ -92,65 +81,57 @@ while True:
 
     keys = pygame.key.get_pressed()
 
-    # Movimentação horizontal
-    if keys[pygame.K_RIGHT] and rect.right + speed <= width:
-        rect.x += speed
-    if keys[pygame.K_LEFT] and rect.left - speed >= 0:
-        rect.x -= speed
-
-    # Movimentação vertical com limite de 40% da altura
-    if keys[pygame.K_UP] and rect.top - speed >= limite_altura:
-        rect.y -= speed
-    if keys[pygame.K_DOWN] and rect.bottom + speed <= height:
-        rect.y += speed
+    # Movimentação do player
+    if keys[pygame.K_RIGHT] and rect.right + SPEED <= width:
+        rect.x += SPEED
+    if keys[pygame.K_LEFT] and rect.left - SPEED >= 0:
+        rect.x -= SPEED
+    if keys[pygame.K_UP] and rect.top - SPEED >= limite_altura:
+        rect.y -= SPEED
+    if keys[pygame.K_DOWN] and rect.bottom + SPEED <= height:
+        rect.y += SPEED
 
     # Disparo de balas com a tecla ESPAÇO
     if keys[pygame.K_SPACE] and player_delay[1] <= 0:
-        bala = Bala(pygame.Rect(rect.centerx, rect.centery, 50, 50), [0, -10], 0)
+        bala = Bala(pygame.Rect(rect.centerx, rect.centery, BALA_WIDTH, BALA_HEIGHT), [0, -10], 0)
         Balas.append(bala)
-        player_delay[1] = player_delay[0]
+        player_delay[1] = PLAYER_DELAY
     elif player_delay[1] > 0:
         player_delay[1] -= 1
 
-    # Desenhar o fundo e o player na tela
+    # Desenhar o fundo e o player
     screen.blit(fundo, (0, 0))
     screen.blit(player, rect)
 
+    # Movimentar e desenhar balas
     for bala in Balas[:]:
-        bala.rect.y += bala.speed[1]  # Movimentar a bala verticalmente
-        screen.blit(bala_img, bala.rect)  # Desenhar a bala usando a imagem
-
-        # Remover a bala se ela sair da tela
+        bala.rect.y += bala.speed[1]
+        screen.blit(bala_img, bala.rect)
         if bala.rect.bottom < 0:
             Balas.remove(bala)
 
-        # Verificar colisões entre balas do jogador e inimigos
-        for bala in Balas:
-            bala.rect.y += bala.speed[1]  # Movimentar a bala verticalmente
-            screen.blit(bala_img, bala.rect)  # Desenhar a bala usando a imagem
-            idInimigo = bala.rect.collidelist(Inimigos)
-            if idInimigo != -1:  # Colisão detectada
-                Inimigos.pop(idInimigo)  # Remover o inimigo
-                Balas.remove(bala)  # Remover a "bala
+        # Verificar colisão de balas com inimigos
+        idInimigo = bala.rect.collidelist([inimigo.rect for inimigo in Inimigos])
+        if idInimigo != -1:
+            Inimigos.pop(idInimigo)
+            Balas.remove(bala)
 
+    # Movimentar inimigos e verificar tiros
     for inimigo in Inimigos:
-        inimigo.move()  # Movimentar o inimigo
-        screen.blit(inimigo_img, inimigo.rect)  # Usando a imagem do player temporariamente como inimigo
-
-        # Verificar se o inimigo deve atirar
+        inimigo.move()
+        screen.blit(inimigo_img, inimigo.rect)
         nova_bala_inimigo = inimigo.shoot()
         if nova_bala_inimigo:
             Balas_inimigos.append(nova_bala_inimigo)
 
-        # Atualizar e desenhar balas dos inimigos
+    # Movimentar e desenhar balas dos inimigos
     for bala_inimigo in Balas_inimigos[:]:
-        bala_inimigo.rect.y += bala_inimigo.speed[1]  # Movimentar a bala para baixo
-        pygame.draw.rect(screen, (255, 0, 0), bala_inimigo.rect)  # Desenhar a bala dos inimigos
+        bala_inimigo.rect.y += bala_inimigo.speed[1]
+        screen.blit(bala_img, bala_inimigo.rect)
         if bala_inimigo.rect.top > height:
-            Balas_inimigos.remove(bala_inimigo)  # Remover a bala se ela sair da tela
-        # Verificar se a bala inimiga colide com o jogador
+            Balas_inimigos.remove(bala_inimigo)
         if bala_inimigo.rect.colliderect(rect):
-            sys.exit()  # Fechar o jogo se houver colisão
+            sys.exit()  # Finaliza o jogo em caso de colisão
 
     pygame.display.flip()
     clock.tick(60)
