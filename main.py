@@ -12,8 +12,8 @@ ENEMY_SPEED = 10
 SHOT_INTERVAL = 500
 BALA_WIDTH = 10
 BALA_HEIGHT = 10
-PLAYER_WIDTH = 110
-PLAYER_HEIGHT = 110
+PLAYER_WIDTH = 50
+PLAYER_HEIGHT = 50
 INIMIGO_WIDTH = 80
 INIMIGO_HEIGHT = 80
 INIMIGO_VIDA = 100
@@ -83,7 +83,7 @@ Balas_inimigos = []
 Balas_inimigos2 = []
 
 # Criar inimigos com vida
-for i in range(6):
+for i in range(10):
     inimigo = Inimigo(pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT), ENEMY_SPEED, INIMIGO_VIDA)
     Inimigos.append(inimigo)
 
@@ -162,7 +162,13 @@ while True:
             if inimigo.vida <= 0:
                 Inimigos.pop(idInimigo)
                 pontos += 10
-            Balas.remove(bala)
+                for _ in range(2):
+                    novo_inimigo2 = Inimigo(
+                        pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT),
+                        20,
+                        INIMIGO2_VIDA
+                    )
+                    Inimigos2.append(novo_inimigo2)
 
         # Colisão com inimigos tipo 2
         idInimigo2 = bala.rect.collidelist([inimigo2.rect for inimigo2 in Inimigos2])
@@ -182,16 +188,7 @@ while True:
         if nova_bala_inimigo:
             Balas_inimigos.append(nova_bala_inimigo)
 
-    # Adicionar inimigos2 somente quando restarem 5 ou menos inimigos do tipo 1
-    if len(Inimigos) <= 5 and len(Inimigos2) < 5:
-        if get_ticks() - tempo_ultimo_spawn_inimigo2 > INTERVALO_SPAWN_INIMIGO2:
-            novo_inimigo2 = Inimigo(
-                pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT),
-                20,
-                INIMIGO2_VIDA
-            )
-            Inimigos2.append(novo_inimigo2)
-            tempo_ultimo_spawn_inimigo2 = get_ticks()
+
 
     for inimigo in Inimigos2:
         inimigo.move()
