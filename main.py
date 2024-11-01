@@ -20,7 +20,7 @@ INIMIGO_VIDA = 100
 INIMIGO2_VIDA = 100
 DANO_BALA = 100
 DANO_BALA_INIMIGO = 50
-player_vida = 200  # Vida inicial do jogador
+player_vida = 300  # Vida inicial do jogador
 
 class Bala:
     def __init__(self, rect, speed, damage):
@@ -29,43 +29,29 @@ class Bala:
         self.damage = damage
 
 class Inimigo:
-    def __init__(self, rect, speed, vida):
+    def __init__(self, rect, speed, vida, use_bala2=False):
         self.rect = rect
         self.speed = speed
         self.direction = 1
         self.last_shot = get_ticks()
         self.vida = vida
+        self.use_bala2 = use_bala2  # Flag para identificar bala2
 
     def move(self):
+        # Movimento horizontal com limitação de bordas
         self.rect.x += self.speed * self.direction
         if self.rect.left <= 0 or self.rect.right >= width:
             self.direction *= -1
+            self.rect.y += 20  # Adiciona movimento vertical ao colidir com as bordas
+            if self.rect.y >= limite_altura:
+                self.rect.y = limite_altura  # Limita a altura máxima
 
     def shoot(self):
         current_time = get_ticks()
         if current_time - self.last_shot > SHOT_INTERVAL:
             self.last_shot = current_time
-            return Bala(pygame.Rect(self.rect.centerx, self.rect.bottom, BALA_WIDTH, BALA_HEIGHT), [0, 10], 10)
-        return None
-
-class Inimigo2:
-    def __init__(self, rect, speed, vida):
-        self.rect = rect
-        self.speed = speed
-        self.direction = 1
-        self.last_shot = get_ticks()
-        self.vida = vida
-
-    def move(self):
-        self.rect.x += self.speed * self.direction
-        if self.rect.left <= 0 or self.rect.right >= width:
-            self.direction *= -1
-
-    def shoot(self):
-        current_time = get_ticks()
-        if current_time - self.last_shot > SHOT_INTERVAL:
-            self.last_shot = current_time
-            return Bala(pygame.Rect(self.rect.centerx, self.rect.bottom, BALA_WIDTH, BALA_HEIGHT), [0, 10], 10)
+            speed = [0, 10]
+            return Bala(pygame.Rect(self.rect.centerx, self.rect.bottom, BALA_WIDTH, BALA_HEIGHT), speed, DANO_BALA_INIMIGO)
         return None
 
 # Inicializar a tela
@@ -78,14 +64,15 @@ rect = pygame.Rect(width // 2 - PLAYER_WIDTH // 2, height - PLAYER_HEIGHT - 10, 
 player_delay = [PLAYER_DELAY, 0]
 
 # Carregar imagens e sons
-pygame.mixer.music.load(r'C:\Users\05341106067\Downloads\musicaFundo.mp3')
+pygame.mixer.music.load(r'sons\musicaFundo.mp3')
 pygame.mixer.music.play(-1)
 
-fundo = pygame.image.load(r'C:\Users\05341106067\Downloads\FUNDO2.jpg')
+fundo = pygame.image.load(r'imagens\fundo.jpg')
 fundo = pygame.transform.scale(fundo, (width, height))
-player = pygame.image.load(r"C:\Users\05341106067\Downloads\player2.png")
-inimigo_img = pygame.image.load(r"C:\Users\05341106067\Downloads\inimigo.png")
-bala_img = pygame.image.load(r"C:\Users\05341106067\Downloads\bala2.png")
+player = pygame.image.load(r"imagens\player.png")
+inimigo_img = pygame.image.load(r"imagens\inimigo.png")
+bala_img = pygame.image.load(r"imagens\bala.png")
+bala2_img = pygame.image.load(r"imagens\bala2.png")
 inimigo2_img = pygame.image.load(r"imagens\inimigo2.png")
 
 # Listas para armazenar balas e inimigos
@@ -110,8 +97,26 @@ def desenhar_hud(screen, vida, pontos):
     screen.blit(vida_text, (10, 10))
     screen.blit(pontos_text, (10, 50))
 
+# Função para atualizar e desenhar balas
+def atualizar_e_desenhar_balas(balas, screen, bala_img, velocidade_y, jogador=None):
+    for bala in balas[:]:
+        bala.rect.y += velocidade_y
+        screen.blit(bala_img, bala.rect)
+        if bala.rect.top > height or bala.rect.bottom < 0:
+            balas.remove(bala)
+        elif jogador and bala.rect.colliderect(jogador):
+            global player_vida
+            player_vida -= bala.damage
+            balas.remove(bala)
+            if player_vida <= 0:
+                sys.exit()
+
 # Variável para armazenar a pontuação
 pontos = 0
+
+# Variável para controlar o spawn de inimigos2
+tempo_ultimo_spawn_inimigo2 = get_ticks()
+INTERVALO_SPAWN_INIMIGO2 = 2000  # intervalo de 2 segundos entre spawn de novos inimigos2
 
 # Loop principal do jogo
 while True:
@@ -144,14 +149,12 @@ while True:
     screen.blit(fundo, (0, 0))
     screen.blit(player, rect)
 
+    # Atualizar balas do jogador
+    atualizar_e_desenhar_balas(Balas, screen, bala_img, -10)
+
     # Verificar colisão de balas com inimigos
     for bala in Balas[:]:
-        bala.rect.y += bala.speed[1]
-        screen.blit(bala_img, bala.rect)
-        if bala.rect.bottom < 0:
-            Balas.remove(bala)
-
-        # Verificar se a bala atingiu algum inimigo
+        # Colisão com inimigos tipo 1
         idInimigo = bala.rect.collidelist([inimigo.rect for inimigo in Inimigos])
         if idInimigo != -1:
             inimigo = Inimigos[idInimigo]
@@ -161,6 +164,16 @@ while True:
                 pontos += 10
             Balas.remove(bala)
 
+        # Colisão com inimigos tipo 2
+        idInimigo2 = bala.rect.collidelist([inimigo2.rect for inimigo2 in Inimigos2])
+        if idInimigo2 != -1:
+            inimigo2 = Inimigos2[idInimigo2]
+            inimigo2.vida -= DANO_BALA
+            if inimigo2.vida <= 0:
+                Inimigos2.pop(idInimigo2)
+                pontos += 15
+            Balas.remove(bala)
+
     # Movimentar inimigos e verificar tiros
     for inimigo in Inimigos:
         inimigo.move()
@@ -168,7 +181,18 @@ while True:
         nova_bala_inimigo = inimigo.shoot()
         if nova_bala_inimigo:
             Balas_inimigos.append(nova_bala_inimigo)
-    
+
+    # Adicionar inimigos2 somente quando restarem 5 ou menos inimigos do tipo 1
+    if len(Inimigos) <= 5 and len(Inimigos2) < 5:
+        if get_ticks() - tempo_ultimo_spawn_inimigo2 > INTERVALO_SPAWN_INIMIGO2:
+            novo_inimigo2 = Inimigo(
+                pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT),
+                20,
+                INIMIGO2_VIDA
+            )
+            Inimigos2.append(novo_inimigo2)
+            tempo_ultimo_spawn_inimigo2 = get_ticks()
+
     for inimigo in Inimigos2:
         inimigo.move()
         screen.blit(inimigo2_img, inimigo.rect)
@@ -176,29 +200,13 @@ while True:
         if nova_bala_inimigo2:
             Balas_inimigos2.append(nova_bala_inimigo2)
 
-    # Verificar colisão de balas dos inimigos com o jogador
-    for bala_inimigo in Balas_inimigos[:]:
-        bala_inimigo.rect.y += bala_inimigo.speed[1]
-        screen.blit(bala_img, bala_inimigo.rect)
-        if bala_inimigo.rect.top > height:
-            Balas_inimigos.remove(bala_inimigo)
-        if bala_inimigo.rect.colliderect(rect):
-            player_vida -= DANO_BALA_INIMIGO
-            Balas_inimigos.remove(bala_inimigo)
-            if player_vida <= 0:
-                sys.exit()
+    # Atualizar balas de inimigos tipo 1 e verificar colisão com o jogador
+    atualizar_e_desenhar_balas(Balas_inimigos, screen, bala_img, 10, jogador=rect)
 
-    # Verificar e adicionar inimigos2 quando restarem 5 ou menos inimigos do tipo 1
-    if len(Inimigos) <= 5 and len(Inimigos2) < 5:
-        for i in range(5):
-            novo_inimigo2 = Inimigo2(
-                pygame.Rect(randint(0, width - INIMIGO_WIDTH), randint(50, 200), INIMIGO_WIDTH, INIMIGO_HEIGHT),
-                ENEMY_SPEED,
-                INIMIGO2_VIDA
-            )
-            Inimigos2.append(novo_inimigo2)
+    # Atualizar balas de inimigos tipo 2 e verificar colisão com o jogador
+    atualizar_e_desenhar_balas(Balas_inimigos2, screen, bala2_img, 10, jogador=rect)
 
-    # Desenhar HUD
+    # Atualizar HUD
     desenhar_hud(screen, player_vida, pontos)
 
     pygame.display.flip()
